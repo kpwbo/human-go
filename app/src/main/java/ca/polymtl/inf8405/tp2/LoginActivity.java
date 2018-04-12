@@ -26,6 +26,7 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        new CheckUserExistsTask(this).execute();
         setContentView(R.layout.activity_login);
     }
 
@@ -67,7 +68,7 @@ public class LoginActivity extends AppCompatActivity {
     public void confirm(View view) {
         bytes = bitmapToBytes(avatar);
         hash = hash(bytes);
-        new AddUsersTask(this).execute(new User(hash, bytes));
+        new AddUsersTask(this).execute(new User(hash, bytes, 1));
     }
 
     /**
@@ -96,6 +97,42 @@ public class LoginActivity extends AppCompatActivity {
         } catch (NoSuchAlgorithmException ex) {
             ex.printStackTrace();
             return "";
+        }
+    }
+
+    /**
+     * Asynchronously adds users to the database.
+     */
+    private static class CheckUserExistsTask extends AsyncTask<Void, Void, User> {
+        private final WeakReference<LoginActivity> context;
+
+        CheckUserExistsTask(final LoginActivity context) {
+            this.context = new WeakReference<>(context);
+        }
+
+        /**
+         * Checks if there is a user in the database.
+         * @param voids Users to add.
+         * @return Nothing.
+         */
+        @Override
+        protected User doInBackground(Void... voids) {
+            return UserDatabase.getInstance(context.get()).getUserDao().getSelf();
+        }
+
+        /**
+         * After the users have been added, go to the MapActivity.
+         * @param result Not used.
+         */
+        @Override
+        protected void onPostExecute(User result) {
+            if (result == null) {
+                return;
+            }
+            Intent intent = new Intent(context.get(), MapActivity.class);
+            intent.putExtra("hash", result.getHash());
+            intent.putExtra("bytes", result.getImage());
+            context.get().startActivity(intent);
         }
     }
 

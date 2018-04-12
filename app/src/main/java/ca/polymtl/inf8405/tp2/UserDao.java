@@ -6,8 +6,8 @@ import android.arch.persistence.room.Query;
 
 @Dao
 public interface UserDao {
-    @Query("SELECT * FROM user WHERE hash = :hash")
-    User getUser(String hash);
+    @Query("SELECT * FROM user WHERE isSelf = 1")
+    User getSelf();
 
     @Insert
     void insert(User... users);

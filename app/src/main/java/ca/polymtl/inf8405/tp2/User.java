@@ -9,10 +9,12 @@ public class User {
     @PrimaryKey @NonNull
     private final String hash;
     private final byte[] image;
+    private final int isSelf;
 
-    User(@NonNull String hash, byte[] image) {
+    User(@NonNull String hash, byte[] image, int isSelf) {
         this.hash = hash;
         this.image = image;
+        this.isSelf = isSelf;
     }
 
     @NonNull
@@ -22,5 +24,9 @@ public class User {
 
     byte[] getImage() {
         return image;
+    }
+
+    int getIsSelf() {
+        return isSelf;
     }
 }

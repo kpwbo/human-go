@@ -221,7 +221,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         NdefMessage msg = (NdefMessage) messages[0];
         byte[] otherUserBytes = msg.getRecords()[0].getPayload();
         String hash = hash(otherUserBytes);
-        new AddUsersTask(this).execute(new User(hash, otherUserBytes));
+        new AddUsersTask(this).execute(new User(hash, otherUserBytes, 0));
     }
 
     /**
