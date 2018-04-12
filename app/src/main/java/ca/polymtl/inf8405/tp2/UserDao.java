@@ -14,4 +14,7 @@ public interface UserDao {
 
     @Query("SELECT COUNT(*) FROM user")
     int getCount();
+	
+	@Query("SELECT COUNT(*) FROM user WHERE hash = :hash")
+	int checkUserExists(String hash);
 }

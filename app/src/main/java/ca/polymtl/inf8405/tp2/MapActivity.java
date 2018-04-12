@@ -322,14 +322,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     for (final Marker userMarker : context.get().userMarkers) {
                         userMarker.remove();
                     }
-                    final JSONArray users = new JSONArray(result);
-                    for (int i = 0; i < users.length(); ++i) {
-                        final JSONObject user = users.getJSONObject(i);
-                        final double lat = user.getDouble("lat");
-                        final double lng = user.getDouble("lng");
-                        final LatLng coordinates = new LatLng(lat ,lng);
-                        context.get().userMarkers.add(context.get().gMap.addMarker(new MarkerOptions().position(coordinates)));
-                    }
+					for (int i = 0; i < users.length(); ++i) {
+						final JSONObject user = users.getJSONObject(i);
+						new PlaceUserMarkerTask(this, user).execute();
+					}
+                    
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -357,6 +354,47 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             UserDatabase.getInstance(context.get()).getUserDao().insert(users);
             System.out.println(UserDatabase.getInstance(context.get()).getUserDao().getCount());
             return null;
+        }
+    }
+	
+	/**
+     * Asynchronously adds user marker to the map
+     */
+    private static class PlaceUserMarkerTask extends AsyncTask<Void, Void, Integer> {
+        private final WeakReference<MapActivity> context;
+		private final JSONObject user;
+
+        AddUsersTask(final MapActivity context, final JSONObject user) {
+            this.context = new WeakReference<>(context);
+			this.user = user;
+        }
+
+        /**
+         * Check if a user hash exists in the database.
+         * @param voids nothing
+         * @return 1 if the user exists in the dabase, 0 otherwise.
+         */
+        @Override
+        protected Integer doInBackground(Void... voids) {
+            return UserDatabase.getInstance(context.get()).getUserDao().checkUserExists(this.user.getHash());
+        }
+		
+		/**
+         * Place a marker on the map for a user with a specific color
+         * @param Integer 1 if the user exists and should be yellow, 0 otherwise and should be red.
+         */
+		@Override
+        protected void onPostExecute(Integer result) {
+			final double lat = user.getDouble("lat");
+			final double lng = user.getDouble("lng");
+			final MarkerOptions options = new MarkerOptions();
+			options.position(new LatLng(lat, lng));
+			if (result == 0) {
+				options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
+			} else {
+				options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW));
+			}
+			this.context.get().userMarkers.add(context.get().gMap.addMarker(options));
         }
     }
 }
