@@ -11,4 +11,7 @@ public interface UserDao {
 
     @Insert
     void insert(User... users);
+
+    @Query("SELECT COUNT(*) FROM user")
+    int getCount();
 }

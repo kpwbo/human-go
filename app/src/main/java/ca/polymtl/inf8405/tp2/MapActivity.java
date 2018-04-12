@@ -355,6 +355,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         @Override
         protected Void doInBackground(User... users) {
             UserDatabase.getInstance(context.get()).getUserDao().insert(users);
+            System.out.println(UserDatabase.getInstance(context.get()).getUserDao().getCount());
             return null;
         }
     }
