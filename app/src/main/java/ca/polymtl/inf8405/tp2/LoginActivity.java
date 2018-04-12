@@ -101,7 +101,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     /**
-     * Asynchronously adds users to the database.
+     * Asynchronously checks if a user is already in the database.
      */
     private static class CheckUserExistsTask extends AsyncTask<Void, Void, User> {
         private final WeakReference<LoginActivity> context;
@@ -121,17 +121,17 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         /**
-         * After the users have been added, go to the MapActivity.
-         * @param result Not used.
+         * After the users have been added, go to the MapActivity if there's already a database entry.
+         * @param user User found from the local database.
          */
         @Override
-        protected void onPostExecute(User result) {
-            if (result == null) {
+        protected void onPostExecute(User user) {
+            if (user == null) {
                 return;
             }
             Intent intent = new Intent(context.get(), MapActivity.class);
-            intent.putExtra("hash", result.getHash());
-            intent.putExtra("bytes", result.getImage());
+            intent.putExtra("hash", user.getHash());
+            intent.putExtra("bytes", user.getImage());
             context.get().startActivity(intent);
         }
     }
