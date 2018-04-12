@@ -50,11 +50,14 @@ import java.io.OutputStreamWriter;
 import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback, SensorEventListener, NfcAdapter.CreateNdefMessageCallback {
     private String hash;
+    private byte[] bytes;
     private static final String API_URL = "http://159.89.54.202/nearby";
     private MapView mapView;
     private GoogleMap gMap;
@@ -74,6 +77,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
         hash = getIntent().getStringExtra("hash");
+        bytes = getIntent().getByteArrayExtra("bytes");
 
         Bundle mapViewBundle = null;
         if (savedInstanceState != null) {
@@ -151,9 +155,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     @Override
     public NdefMessage createNdefMessage(NfcEvent event) {
-        String text = "wot";
         return new NdefMessage(new NdefRecord[] {
-           NdefRecord.createMime("application/ca.polymtl.inf8405.tp2", text.getBytes())
+           NdefRecord.createMime("application/ca.polymtl.inf8405.tp2", bytes)
         });
     }
 
@@ -216,7 +219,27 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private void processIntent(Intent intent) {
         Parcelable[] messages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
         NdefMessage msg = (NdefMessage) messages[0];
-        System.out.println("got : " + new String(msg.getRecords()[0].getPayload()));
+        byte[] otherUserBytes = msg.getRecords()[0].getPayload();
+        String hash = hash(otherUserBytes);
+        new AddUsersTask(this).execute(new User(hash, otherUserBytes));
+    }
+
+    /**
+     * Hashes (MD5) an array of bytes.
+     * @param bytes Bytes to hash.
+     * @return Hash.
+     */
+    private static String hash(final byte[] bytes) {
+        try {
+            final StringBuilder sb = new StringBuilder();
+            for (byte hashByte : MessageDigest.getInstance("MD5").digest(bytes)) {
+                sb.append(Integer.toHexString((hashByte & 0xFF) | 0x100).substring(1, 3));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            ex.printStackTrace();
+            return "";
+        }
     }
 
     @Override
@@ -311,6 +334,28 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     e.printStackTrace();
                 }
             }
+        }
+    }
+
+    /**
+     * Asynchronously adds users to the database.
+     */
+    private static class AddUsersTask extends AsyncTask<User, Void, Void> {
+        private final WeakReference<MapActivity> context;
+
+        AddUsersTask(final MapActivity context) {
+            this.context = new WeakReference<>(context);
+        }
+
+        /**
+         * Adds users to the database.
+         * @param users Users to add.
+         * @return Nothing.
+         */
+        @Override
+        protected Void doInBackground(User... users) {
+            UserDatabase.getInstance(context.get()).getUserDao().insert(users);
+            return null;
         }
     }
 }

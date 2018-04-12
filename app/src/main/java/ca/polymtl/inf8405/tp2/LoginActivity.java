@@ -21,6 +21,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private Bitmap avatar;
     private String hash;
+    private byte[] bytes;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,7 +65,7 @@ public class LoginActivity extends AppCompatActivity {
      * @param view Not used.
      */
     public void confirm(View view) {
-        final byte[] bytes = bitmapToBytes(avatar);
+        bytes = bitmapToBytes(avatar);
         hash = hash(bytes);
         new AddUsersTask(this).execute(new User(hash, bytes));
     }
@@ -109,7 +110,7 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         /**
-         * Adds a user to the database.
+         * Adds users to the database.
          * @param users Users to add.
          * @return Nothing.
          */
@@ -120,13 +121,14 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         /**
-         * After the user has been added, go to the MapActivity.
+         * After the users have been added, go to the MapActivity.
          * @param result Not used.
          */
         @Override
         protected void onPostExecute(Void result) {
             Intent intent = new Intent(context.get(), MapActivity.class);
             intent.putExtra("hash", context.get().hash);
+            intent.putExtra("bytes", context.get().bytes);
             context.get().startActivity(intent);
         }
     }
