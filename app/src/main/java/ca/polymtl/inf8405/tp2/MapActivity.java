@@ -322,9 +322,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     for (final Marker userMarker : context.get().userMarkers) {
                         userMarker.remove();
                     }
+                    final JSONArray users = new JSONArray(result);
 					for (int i = 0; i < users.length(); ++i) {
 						final JSONObject user = users.getJSONObject(i);
-						new PlaceUserMarkerTask(this, user).execute();
+						new PlaceUserMarkerTask(context.get(), user).execute();
 					}
                     
                 } catch (JSONException e) {
@@ -364,7 +365,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         private final WeakReference<MapActivity> context;
 		private final JSONObject user;
 
-        AddUsersTask(final MapActivity context, final JSONObject user) {
+        PlaceUserMarkerTask(final MapActivity context, final JSONObject user) {
             this.context = new WeakReference<>(context);
 			this.user = user;
         }
@@ -376,25 +377,38 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
          */
         @Override
         protected Integer doInBackground(Void... voids) {
-            return UserDatabase.getInstance(context.get()).getUserDao().checkUserExists(this.user.getHash());
+            try {
+                final String hash = user.getString("hash");
+                return UserDatabase.getInstance(context.get()).getUserDao().checkUserExists(hash);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            return null;
         }
 		
 		/**
          * Place a marker on the map for a user with a specific color
-         * @param Integer 1 if the user exists and should be yellow, 0 otherwise and should be red.
+         * @param result 1 if the user exists and should be yellow, 0 otherwise and should be red.
          */
 		@Override
         protected void onPostExecute(Integer result) {
-			final double lat = user.getDouble("lat");
-			final double lng = user.getDouble("lng");
-			final MarkerOptions options = new MarkerOptions();
-			options.position(new LatLng(lat, lng));
-			if (result == 0) {
-				options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
-			} else {
-				options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW));
-			}
-			this.context.get().userMarkers.add(context.get().gMap.addMarker(options));
+		    if (result != null) {
+                try {
+                    final double lat = user.getDouble("lat");
+                    final double lng = user.getDouble("lng");
+                    final MarkerOptions options = new MarkerOptions();
+                    options.position(new LatLng(lat, lng));
+                    if (result == 0) {
+                        options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
+                    } else {
+                        options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW));
+                    }
+                    this.context.get().userMarkers.add(context.get().gMap.addMarker(options));
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }
