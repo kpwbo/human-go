@@ -3,25 +3,31 @@ package ca.polymtl.inf8405.tp2;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
+import android.net.TrafficStats;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.NfcEvent;
 import android.os.AsyncTask;
+import android.os.BatteryManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.text.format.Formatter;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -71,6 +77,13 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private Sensor lightSensor;
     private NfcAdapter nfcAdapter;
     private PendingIntent pendingIntent;
+    private Float originalBatteryLevel = null;
+    private Float currentBatteryLevel = null;
+    private long originalReceivedBytes = 0;
+    private long currentReceivedBytes = 0;
+    private long originalTransmittedBytes = 0;
+    private long currentTransmittedBytes = 0;
+    private Handler handler = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,7 +91,15 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         setContentView(R.layout.activity_map);
         hash = getIntent().getStringExtra("hash");
         bytes = getIntent().getByteArrayExtra("bytes");
+        originalBatteryLevel = (Float) getIntent().getSerializableExtra("originalBattery");
+        currentBatteryLevel = (Float) getIntent().getSerializableExtra("currentBattery");
+        originalReceivedBytes = getIntent().getLongExtra("originalReceived", 0);
+        currentReceivedBytes = getIntent().getLongExtra("currentReceived", 0);
+        originalTransmittedBytes = getIntent().getLongExtra("originalTransmitted", 0);
+        currentTransmittedBytes = getIntent().getLongExtra("currentTransmitted", 0);
 
+        manageBattery();
+        handler.postDelayed(new NetworkInfoManager(), 1000);
         Bundle mapViewBundle = null;
         if (savedInstanceState != null) {
             mapViewBundle = savedInstanceState.getBundle(MAP_VIEW_BUNDLE_KEY);
@@ -102,6 +123,39 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         getPermissions();
     }
 
+    @SuppressLint("DefaultLocale")
+    private void updateTitle() {
+        setTitle(String.format("Pile %.0f%%, %s down, %s up",
+                100*(originalBatteryLevel - currentBatteryLevel),
+                Formatter.formatShortFileSize(this, currentReceivedBytes - originalReceivedBytes),
+                Formatter.formatShortFileSize(this, currentTransmittedBytes - originalTransmittedBytes)));
+    }
+
+    private class NetworkInfoManager implements Runnable {
+        public void run() {
+            currentReceivedBytes = TrafficStats.getTotalRxBytes();
+            currentTransmittedBytes = TrafficStats.getTotalTxBytes();
+            updateTitle();
+            handler.postDelayed(new NetworkInfoManager(), 1000);
+        }
+    }
+
+    private void manageBattery() {
+        registerReceiver(new BroadcastReceiver() {
+            @SuppressLint("DefaultLocale")
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                final int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                final int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                currentBatteryLevel = level / (float) scale;
+                if (originalBatteryLevel == null) {
+                    originalBatteryLevel = currentBatteryLevel;
+                }
+                updateTitle();
+            }
+        }, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+    }
+
     @Override
     public final void onAccuracyChanged(Sensor sensor, int accuracy) {
         // nothing
@@ -110,7 +164,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     @Override
     public final void onSensorChanged(SensorEvent event) {
         if (event.sensor == lightSensor && gMap != null) {
-            if (event.values[0] < 10) {
+            if (event.values[0] < 1) {
                 gMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this, R.raw.night_mode));
             } else {
                 gMap.setMapStyle(null);

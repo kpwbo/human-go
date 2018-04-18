@@ -1,11 +1,19 @@
 package ca.polymtl.inf8405.tp2;
 
+import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
+import android.net.TrafficStats;
 import android.os.AsyncTask;
+import android.os.BatteryManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
+import android.text.format.Formatter;
 import android.view.View;
 import android.widget.ImageView;
 
@@ -22,12 +30,57 @@ public class LoginActivity extends AppCompatActivity {
     private Bitmap avatar;
     private String hash;
     private byte[] bytes;
+    private Float originalBatteryLevel = null;
+    private Float currentBatteryLevel = null;
+    private long originalReceivedBytes = 0;
+    private long currentReceivedBytes = 0;
+    private long originalTransmittedBytes = 0;
+    private long currentTransmittedBytes = 0;
+    private Handler handler = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        manageBattery();
+        originalReceivedBytes = TrafficStats.getTotalRxBytes();
+        originalTransmittedBytes = TrafficStats.getTotalTxBytes();
+        currentReceivedBytes = originalReceivedBytes;
+        currentTransmittedBytes = originalTransmittedBytes;
+        handler.postDelayed(new NetworkInfoManager(), 1000);
         new CheckUserExistsTask(this).execute();
         setContentView(R.layout.activity_login);
+    }
+
+    private class NetworkInfoManager implements Runnable {
+        public void run() {
+            currentReceivedBytes = TrafficStats.getTotalRxBytes();
+            currentTransmittedBytes = TrafficStats.getTotalTxBytes();
+            updateTitle();
+            handler.postDelayed(new NetworkInfoManager(), 1000);
+        }
+    }
+
+    @SuppressLint("DefaultLocale")
+    private void updateTitle() {
+        setTitle(String.format("Pile %.0f%%, %s down, %s up",
+                100*(originalBatteryLevel - currentBatteryLevel),
+                Formatter.formatShortFileSize(this, currentReceivedBytes - originalReceivedBytes),
+                Formatter.formatShortFileSize(this, currentTransmittedBytes - originalTransmittedBytes)));
+    }
+
+    private void manageBattery() {
+        registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                final int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                final int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                currentBatteryLevel = level / (float) scale;
+                if (originalBatteryLevel == null) {
+                    originalBatteryLevel = currentBatteryLevel;
+                }
+                updateTitle();
+            }
+        }, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
     }
 
     /**
@@ -132,6 +185,12 @@ public class LoginActivity extends AppCompatActivity {
             Intent intent = new Intent(context.get(), MapActivity.class);
             intent.putExtra("hash", user.getHash());
             intent.putExtra("bytes", user.getImage());
+            intent.putExtra("originalBattery", context.get().originalBatteryLevel);
+            intent.putExtra("currentBattery", context.get().currentBatteryLevel);
+            intent.putExtra("originalReceived", context.get().originalReceivedBytes);
+            intent.putExtra("currentReceived", context.get().currentReceivedBytes);
+            intent.putExtra("originalTransmitted", context.get().originalTransmittedBytes);
+            intent.putExtra("currentTransmitted", context.get().currentTransmittedBytes);
             context.get().startActivity(intent);
         }
     }
@@ -166,6 +225,12 @@ public class LoginActivity extends AppCompatActivity {
             Intent intent = new Intent(context.get(), MapActivity.class);
             intent.putExtra("hash", context.get().hash);
             intent.putExtra("bytes", context.get().bytes);
+            intent.putExtra("originalBattery", context.get().originalBatteryLevel);
+            intent.putExtra("currentBattery", context.get().currentBatteryLevel);
+            intent.putExtra("originalReceived", context.get().originalReceivedBytes);
+            intent.putExtra("currentReceived", context.get().currentReceivedBytes);
+            intent.putExtra("originalTransmitted", context.get().originalTransmittedBytes);
+            intent.putExtra("currentTransmitted", context.get().currentTransmittedBytes);
             context.get().startActivity(intent);
         }
     }
