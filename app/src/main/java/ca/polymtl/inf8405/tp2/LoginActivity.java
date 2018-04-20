@@ -26,18 +26,53 @@ import java.security.NoSuchAlgorithmException;
  * Asks the user to take a picture before starting the "game".
  */
 public class LoginActivity extends AppCompatActivity {
-
+    /**
+     * The avatar of the user.
+     */
     private Bitmap avatar;
+    /**
+     * The hash of the bytes of the avatar.
+     */
     private String hash;
+    /**
+     * The bytes of the avatar.
+     */
     private byte[] bytes;
+    /**
+     * The first measured battery level.
+     */
     private Float originalBatteryLevel = null;
+    /**
+     * The latest measured battery level.
+     */
     private Float currentBatteryLevel = null;
+    /**
+     * The original count of received bytes.
+     */
     private long originalReceivedBytes = 0;
+    /**
+     * The current count of received bytes.
+     */
     private long currentReceivedBytes = 0;
+    /**
+     * The original count of transmitted bytes.
+     */
     private long originalTransmittedBytes = 0;
+    /**
+     * The current count of transmitted bytes.
+     */
     private long currentTransmittedBytes = 0;
+    /**
+     * Handler used to schedule network information gathering.
+     */
     private Handler handler = new Handler();
 
+    /**
+     * Called when the activity is started.
+     * Sets up battery and network information management.
+     * Checks if the user already has an avatar. If so, move on to MapActivity.
+     * @param savedInstanceState saved instance state
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -51,7 +86,13 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
     }
 
+    /**
+     * A Runnable that retrieves network information every second.
+     */
     private class NetworkInfoManager implements Runnable {
+        /**
+         * Retrieve network information and update the title.
+         */
         public void run() {
             currentReceivedBytes = TrafficStats.getTotalRxBytes();
             currentTransmittedBytes = TrafficStats.getTotalTxBytes();
@@ -60,6 +101,9 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Update the title with battery and network information.
+     */
     @SuppressLint("DefaultLocale")
     private void updateTitle() {
         setTitle(String.format("Pile %.0f%%, %s down, %s up",
@@ -68,8 +112,16 @@ public class LoginActivity extends AppCompatActivity {
                 Formatter.formatShortFileSize(this, currentTransmittedBytes - originalTransmittedBytes)));
     }
 
+    /**
+     * Sets up a receiver for battery changes.
+     */
     private void manageBattery() {
         registerReceiver(new BroadcastReceiver() {
+            /**
+             * Called when the battery changes.
+             * @param context not used
+             * @param intent Used to get the information of the battery
+             */
             @Override
             public void onReceive(Context context, Intent intent) {
                 final int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
@@ -157,16 +209,23 @@ public class LoginActivity extends AppCompatActivity {
      * Asynchronously checks if a user is already in the database.
      */
     private static class CheckUserExistsTask extends AsyncTask<Void, Void, User> {
+        /**
+         * Reference to the LoginActivity
+         */
         private final WeakReference<LoginActivity> context;
 
+        /**
+         * Constructor.
+         * @param context reference to the LoginActivity
+         */
         CheckUserExistsTask(final LoginActivity context) {
             this.context = new WeakReference<>(context);
         }
 
         /**
          * Checks if there is a user in the database.
-         * @param voids Users to add.
-         * @return Nothing.
+         * @param voids voids
+         * @return The user.
          */
         @Override
         protected User doInBackground(Void... voids) {
@@ -174,7 +233,7 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         /**
-         * After the users have been added, go to the MapActivity if there's already a database entry.
+         * If the user exists, go to the MapActivity.
          * @param user User found from the local database.
          */
         @Override
@@ -199,8 +258,15 @@ public class LoginActivity extends AppCompatActivity {
      * Asynchronously adds users to the database.
      */
     private static class AddUsersTask extends AsyncTask<User, Void, Void> {
+        /**
+         * Reference to the LoginActivity
+         */
         private final WeakReference<LoginActivity> context;
 
+        /**
+         * Constructor
+         * @param context reference to the LoginActivity
+         */
         AddUsersTask(final LoginActivity context) {
             this.context = new WeakReference<>(context);
         }

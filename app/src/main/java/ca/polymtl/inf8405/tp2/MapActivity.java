@@ -61,30 +61,105 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Shows a map to the user.
+ */
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback, SensorEventListener, NfcAdapter.CreateNdefMessageCallback {
+    /**
+     * Hash of the avatar of the user.
+     */
     private String hash;
+    /**
+     * Bytes of the avatar of the user.
+     */
     private byte[] bytes;
+    /**
+     * URL of the API.
+     */
     private static final String API_URL = "http://159.89.54.202/nearby";
+    /**
+     * Reference to the map view.
+     */
     private MapView mapView;
+    /**
+     * Reference to the google map.
+     */
     private GoogleMap gMap;
+    /**
+     * Location Client used to get location.
+     */
     private FusedLocationProviderClient locationClient;
+    /**
+     * Key used to bundle the map view.
+     */
     private static final String MAP_VIEW_BUNDLE_KEY = "MapViewBundleKey";
+    /**
+     * Latitude of the user.
+     */
     private double lat = 0;
+    /**
+     * Longitude of the user.
+     */
     private double lng = 0;
+    /**
+     * Markers of the other users.
+     */
     private final List<Marker> userMarkers = new ArrayList<>();
+    /**
+     * Marker of the user.
+     */
     private Marker userMarker;
+    /**
+     * Sensor Manager.
+     */
     private SensorManager sensorManager;
+    /**
+     * Sensor used to get light information.
+     */
     private Sensor lightSensor;
+    /**
+     * NFC adapater.
+     */
     private NfcAdapter nfcAdapter;
+    /**
+     * Used to capture NFC events.
+     */
     private PendingIntent pendingIntent;
+    /**
+     * Original level of the battery.
+     */
     private Float originalBatteryLevel = null;
+    /**
+     * Current level of the battery.
+     */
     private Float currentBatteryLevel = null;
+    /**
+     * Original count of the received bytes.
+     */
     private long originalReceivedBytes = 0;
+    /**
+     * Current count of the received bytes.
+     */
     private long currentReceivedBytes = 0;
+    /**
+     * Original count of the transmitted bytes.
+     */
     private long originalTransmittedBytes = 0;
+    /**
+     * Current count of the transmitted bytes.
+     */
     private long currentTransmittedBytes = 0;
+    /**
+     * Handler used to schedule network information gathering.
+     */
     private Handler handler = new Handler();
 
+    /**
+     * Called when the activity is started.
+     * Gets the information from the previous activity.
+     * Sets up battery, network, location, light, and NFC management.
+     * @param savedInstanceState saved instance state
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -123,6 +198,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         getPermissions();
     }
 
+    /**
+     * Update the title with battery and network information.
+     */
     @SuppressLint("DefaultLocale")
     private void updateTitle() {
         setTitle(String.format("Pile %.0f%%, %s down, %s up",
@@ -131,7 +209,13 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 Formatter.formatShortFileSize(this, currentTransmittedBytes - originalTransmittedBytes)));
     }
 
+    /**
+     * Runnable that retrieves network information every second.
+     */
     private class NetworkInfoManager implements Runnable {
+        /**
+         * Retrieves network information and updates the title.
+         */
         public void run() {
             currentReceivedBytes = TrafficStats.getTotalRxBytes();
             currentTransmittedBytes = TrafficStats.getTotalTxBytes();
@@ -140,9 +224,16 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+    /**
+     * Sets up a receiver of battery changes.
+     */
     private void manageBattery() {
         registerReceiver(new BroadcastReceiver() {
-            @SuppressLint("DefaultLocale")
+            /**
+             * Called when the battery level changes. Updates the battery information and the title.
+             * @param context
+             * @param intent
+             */
             @Override
             public void onReceive(Context context, Intent intent) {
                 final int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
@@ -156,11 +247,21 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
     }
 
+    /**
+     * Called when sensor accuracy changes. Doesn't do anything.
+     * @param sensor not used
+     * @param accuracy not used
+     */
     @Override
     public final void onAccuracyChanged(Sensor sensor, int accuracy) {
         // nothing
     }
 
+    /**
+     * Called when the sensor's value has changed.
+     * Changes the style of the map depending on the value of the light sensor.
+     * @param event event containing the relevant information.
+     */
     @Override
     public final void onSensorChanged(SensorEvent event) {
         if (event.sensor == lightSensor && gMap != null) {
@@ -172,6 +273,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+    /**
+     * Gets necessary permissions if needed. Then gets the map.
+     */
     private void getPermissions() {
         final String[] requiredPermissions = { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, Manifest.permission.NFC };
         final List<String> toAskPermissions = new ArrayList<>();
@@ -187,6 +291,12 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+    /**
+     * Called when the permissions have been granted or denied. Gets the map.
+     * @param requestCode code of the request
+     * @param permissions not used
+     * @param grantResults results of the request
+     */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
         if (requestCode == 0) {
@@ -199,6 +309,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+    /**
+     * Called when the map is ready. Sets up NFC and gets the location.
+     * @param googleMap google map
+     */
     @SuppressLint("MissingPermission")
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -207,6 +321,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         getLocation();
     }
 
+    /**
+     * Called when an NFC transmission is requested. Sends the bytes of the avatar.
+     * @param event not used
+     * @return the created NdefMessage
+     */
     @Override
     public NdefMessage createNdefMessage(NfcEvent event) {
         return new NdefMessage(new NdefRecord[] {
@@ -214,6 +333,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         });
     }
 
+    /**
+     * Sets up a receiver for location changes every second.
+     */
     @SuppressLint("MissingPermission")
     private void getLocation() {
         LocationRequest locationRequest = LocationRequest.create();
@@ -222,6 +344,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         LocationCallback locationCallback = new LocationCallback() {
+            /**
+             * Callend when the location changes. Updates the user marker on the map, then gets nearby users.
+             * @param locationResult new location
+             */
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 Location location = locationResult.getLastLocation();
@@ -243,6 +369,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         locationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper());
     }
 
+    /**
+     * Called when the instance needs to be saved.
+     * @param outState out state
+     */
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
@@ -254,11 +384,18 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         mapView.onSaveInstanceState(mapViewBundle);
     }
 
+    /**
+     * Called when there is a new intent.
+     * @param intent new intent
+     */
     @Override
     public void onNewIntent(Intent intent) {
         setIntent(intent);
     }
 
+    /**
+     * Called when the activity resumes.
+     */
     @Override
     protected void onResume() {
         super.onResume();
@@ -270,6 +407,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+    /**
+     * Called when information came from NFC. Reads the bytes, hashes them and puts the information in the database.
+     * @param intent Information
+     */
     private void processIntent(Intent intent) {
         Parcelable[] messages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
         NdefMessage msg = (NdefMessage) messages[0];
@@ -296,18 +437,27 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+    /**
+     * Called when the activity is started.
+     */
     @Override
     protected void onStart() {
         super.onStart();
         mapView.onStart();
     }
 
+    /**
+     * Called when the activity is stopped.
+     */
     @Override
     protected void onStop() {
         super.onStop();
         mapView.onStop();
     }
 
+    /**
+     * Called when the activity is paused.
+     */
     @Override
     protected void onPause() {
         mapView.onPause();
@@ -316,25 +466,46 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         nfcAdapter.disableForegroundDispatch(this);
     }
 
+    /**
+     * Called when the activity is destroyed.
+     */
     @Override
     protected void onDestroy() {
         mapView.onDestroy();
         super.onDestroy();
     }
 
+    /**
+     * Called when the activity has low memory.
+     */
     @Override
     public void onLowMemory() {
         super.onLowMemory();
         mapView.onLowMemory();
     }
 
+    /**
+     * Makes a call to the API to get nearby users and updates the map with the results.
+     */
     static class GetNearbyUsers extends AsyncTask<Double, Void, String> {
+        /**
+         * Reference to the context.
+         */
         private final WeakReference<MapActivity> context;
 
+        /**
+         * Constructor.
+         * @param context reference to the context
+         */
         GetNearbyUsers(final MapActivity context) {
             this.context = new WeakReference<>(context);
         }
 
+        /**
+         * Make an API call to get nearby users.
+         * @param coordinates Coordinates of the user.
+         * @return Result of the API call.
+         */
         @Override
         protected String doInBackground(Double... coordinates) {
             try {
@@ -369,6 +540,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             return null;
         }
 
+        /**
+         * Updates the markers on the map depending on the result of the API call.
+         * @param result result of the API call
+         */
         @Override
         protected void onPostExecute(String result) {
             if (result != null) {
@@ -393,8 +568,15 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
      * Asynchronously adds users to the database.
      */
     private static class AddUsersTask extends AsyncTask<User, Void, Void> {
+        /**
+         * Reference to the context.
+         */
         private final WeakReference<MapActivity> context;
 
+        /**
+         * Constructor.
+         * @param context reference to the context
+         */
         AddUsersTask(final MapActivity context) {
             this.context = new WeakReference<>(context);
         }
@@ -415,9 +597,20 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
      * Asynchronously adds user marker to the map
      */
     private static class PlaceUserMarkerTask extends AsyncTask<Void, Void, Integer> {
+        /**
+         * Reference to the context.
+         */
         private final WeakReference<MapActivity> context;
+        /**
+         * user to put on the map
+         */
 		private final JSONObject user;
 
+        /**
+         * Constructor.
+         * @param context reference to the context
+         * @param user user to put on the map
+         */
         PlaceUserMarkerTask(final MapActivity context, final JSONObject user) {
             this.context = new WeakReference<>(context);
 			this.user = user;
